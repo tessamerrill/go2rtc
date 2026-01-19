@@ -37,7 +37,7 @@ func xorEncode(data []byte) []byte {
 	arr := make([]byte, len(data))
 	b := byte(LinkieSeed)
 	for i := 0; i < len(data); i++ {
-		b = (b ^ data[i]) & 0xFF
+		b = b ^ data[i]
 		arr[i] = b
 	}
 	return arr
@@ -50,7 +50,7 @@ func xorDecode(data []byte) []byte {
 	prev := byte(LinkieSeed)
 	for i := 0; i < len(data); i++ {
 		cur := data[i]
-		arr[i] = (prev ^ cur) & 0xFF
+		arr[i] = prev ^ cur
 		prev = cur
 	}
 	return arr

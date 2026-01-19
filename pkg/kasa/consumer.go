@@ -120,10 +120,10 @@ func (c *Consumer) AddTrack(media *core.Media, codec *core.Codec, track *core.Re
 		}
 
 		// Send audio payload to camera
+		// Individual packet errors are expected during streaming (e.g. temporary network issues)
+		// and should not stop the entire stream. Errors are silently ignored to maintain
+		// continuous audio flow. Monitor connection health via the Stop/Done lifecycle.
 		if err := c.sendAudio(packet.Payload); err != nil {
-			// Note: We don't stop streaming on individual packet errors
-			// as temporary network issues are expected
-			// Error logging would go here if logger was available
 			return
 		}
 
@@ -259,6 +259,8 @@ func (c *Consumer) sendAudio(data []byte) error {
 	}
 
 	// Set headers to match Kasa app
+	// Note: Content-Type is 'audio/g711' which is the generic type for both PCMU and PCMA
+	// The camera accepts both µ-law and A-law under this Content-Type as they are both G.711 variants
 	req.Header.Set("Content-Type", "audio/g711")
 	req.Header.Set("User-Agent", "Kasa_Android/3.4.9.1119")
 	req.Header.Set("Connection", "keep-alive")
