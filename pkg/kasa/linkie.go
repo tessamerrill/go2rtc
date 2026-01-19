@@ -1,5 +1,18 @@
 package kasa
 
+// LINKIE2 Protocol Implementation
+//
+// This file implements the Kasa LINKIE2 protocol for camera control and session management.
+// The protocol uses XOR encoding with a seed value for obfuscating JSON commands sent to the camera.
+//
+// Protocol details:
+//   - Port: 10443 (HTTPS)
+//   - Authentication: HTTP Basic Auth
+//   - Encoding: XOR with seed 0xAB, then Base64, then URL encoding
+//   - Format: application/x-www-form-urlencoded with "content=" parameter
+//
+// Reference: https://github.com/tessamerrill/kasa-ptz-frigate/blob/main/tp_linkie_ptz.py
+
 import (
 	"bytes"
 	"crypto/tls"

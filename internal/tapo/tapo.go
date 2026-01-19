@@ -2,8 +2,8 @@ package tapo
 
 import (
 	"fmt"
+	"net"
 	"net/url"
-	"strings"
 
 	"github.com/AlexxIT/go2rtc/internal/streams"
 	"github.com/AlexxIT/go2rtc/pkg/core"
@@ -41,21 +41,30 @@ func Init() {
 		}
 
 		// Extract camera IP (hostname without port)
+		// Use net.SplitHostPort to properly handle IPv6 addresses
 		cameraIP := u.Hostname()
 		if cameraIP == "" {
 			return nil, nil, fmt.Errorf("kasa-speaker: camera IP required")
 		}
 
-		// Remove port if specified (we use hardcoded ports)
-		cameraIP = strings.Split(cameraIP, ":")[0]
+		// If there's a port in the URL, remove it (we use hardcoded ports)
+		// SplitHostPort already handles IPv6 properly
+		if host, _, err := net.SplitHostPort(u.Host); err == nil {
+			cameraIP = host
+		}
 
 		cons := kasa.NewConsumer(cameraIP, username, password)
 
-		// Closer function to stop the consumer
-		closer := func() {
-			_ = cons.Stop()
+		// Run function to start the consumer and keep it alive
+		run := func() {
+			if err := cons.Start(); err != nil {
+				// Error starting - consumer will be removed by the stream
+				return
+			}
+			// Wait until stopped
+			<-cons.Done()
 		}
 
-		return cons, closer, nil
+		return cons, run, nil
 	})
 }

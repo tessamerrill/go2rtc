@@ -1,5 +1,22 @@
 package kasa
 
+// Consumer implements Kasa camera two-way audio (backchannel) support.
+//
+// This allows sending audio TO Kasa cameras (TP-Link KC200, KC401, KC420WS, KD110, etc)
+// using the LINKIE2 protocol for session management and HTTPS streaming for audio data.
+//
+// Usage in go2rtc configuration:
+//
+//	streams:
+//	  kasa_camera:
+//	    # Receive video and audio FROM camera
+//	    - kasa://admin:password@192.168.1.123:19443/https/stream/mixed
+//	    # Send audio TO camera (backchannel)
+//	    - kasa-speaker://admin:password@192.168.1.123
+//
+// The consumer supports G.711 µ-law (PCMU) and A-law (PCMA) audio at 8000 Hz.
+// Based on the reference implementation in tessamerrill/kasa-ptz-frigate.
+
 import (
 	"bytes"
 	"crypto/tls"
@@ -36,6 +53,8 @@ type Consumer struct {
 
 	streaming bool
 	stopChan  chan struct{}
+	doneChan  chan struct{}
+	stopOnce  sync.Once
 	mu        sync.Mutex
 }
 
@@ -70,6 +89,7 @@ func NewConsumer(cameraIP, username, password string) *Consumer {
 		sessionID: DefaultSessionID,
 		url:       fmt.Sprintf("https://%s:%d%s", cameraIP, DataInPort, SpeakerEndpoint),
 		stopChan:  make(chan struct{}),
+		doneChan:  make(chan struct{}),
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
@@ -101,7 +121,9 @@ func (c *Consumer) AddTrack(media *core.Media, codec *core.Codec, track *core.Re
 
 		// Send audio payload to camera
 		if err := c.sendAudio(packet.Payload); err != nil {
-			// Log error but don't stop streaming
+			// Note: We don't stop streaming on individual packet errors
+			// as temporary network issues are expected
+			// Error logging would go here if logger was available
 			return
 		}
 
@@ -143,13 +165,20 @@ func (c *Consumer) Stop() error {
 	c.streaming = false
 	c.mu.Unlock()
 
-	// Signal stop
-	close(c.stopChan)
-
-	// Disconnect RTC session
-	_ = c.setRTCSessionStatus(false)
+	// Use sync.Once to ensure channels are only closed once
+	c.stopOnce.Do(func() {
+		close(c.stopChan)
+		// Disconnect RTC session
+		_ = c.setRTCSessionStatus(false)
+		close(c.doneChan)
+	})
 
 	return c.Connection.Stop()
+}
+
+// Done returns a channel that blocks until the consumer is stopped
+func (c *Consumer) Done() <-chan struct{} {
+	return c.doneChan
 }
 
 // prepareRTCSession prepares the RTC session on the camera
