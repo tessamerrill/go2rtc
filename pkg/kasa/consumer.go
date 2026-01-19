@@ -94,7 +94,7 @@ func NewConsumer(cameraIP, username, password string) *Consumer {
 			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
+					InsecureSkipVerify: true, // #nosec G402 - Required for Kasa cameras with self-signed certs
 				},
 				// Keep-alive for continuous streaming
 				DisableKeepAlives:   false,

@@ -127,11 +127,13 @@ func sendLinkieCommand(ip string, command map[string]interface{}, username, pass
 	req.SetBasicAuth(username, password)
 
 	// Create HTTP client with TLS skip verify (Kasa cameras use self-signed certs)
+	// NOTE: This is expected and required for Kasa cameras which do not have valid certificates
+	// The camera is accessed via local IP on the user's network, not over the internet
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: true, // #nosec G402 - Required for Kasa cameras with self-signed certs
 			},
 		},
 	}
