@@ -613,8 +613,14 @@ echo -n "cloud password" | shasum -a 256 | awk '{print toupper($0)}'
 
 ```yaml
 streams:
-  kc401: kasa://username:password@192.168.1.123:19443/https/stream/mixed
+  kc401: 
+    # Receive video and audio FROM camera
+    - kasa://username:password@192.168.1.123:19443/https/stream/mixed
+    # Send audio TO camera (two-way audio, backchannel)
+    - kasa-speaker://username:password@192.168.1.123
 ```
+
+**Two-way audio support**: Use the `kasa-speaker://` scheme to send audio back to the camera. Supports G.711 µ-law (PCMU) and A-law (PCMA) audio formats.
 
 Tested: KD110, KC200, KC401, KC420WS, EC71.
 
